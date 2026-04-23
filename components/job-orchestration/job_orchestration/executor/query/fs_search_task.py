@@ -7,6 +7,7 @@ from celery.app.task import Task
 from celery.utils.log import get_task_logger
 from clp_py_utils.clp_config import (
     Database,
+    QUERY_JOBS_TABLE_NAME,
     StorageEngine,
     StorageType,
     WorkerConfig,
@@ -27,9 +28,35 @@ from job_orchestration.executor.query.utils import (
 from job_orchestration.executor.utils import load_worker_config
 from job_orchestration.scheduler.job_config import SearchJobConfig
 from job_orchestration.scheduler.scheduler_data import QueryTaskResult, QueryTaskStatus
+from job_orchestration.scheduler.constants import QueryJobStatus
 
 # Setup logging
 logger = get_task_logger(__name__)
+
+
+def _is_job_cancelled(sql_adapter: SqlAdapter, job_id: str) -> bool:
+    """Checks if the job has been cancelled or is being cancelled."""
+    from contextlib import closing
+
+    try:
+        with (
+            closing(sql_adapter.create_connection(True)) as db_conn,
+            closing(db_conn.cursor(dictionary=True)) as db_cursor,
+        ):
+            db_cursor.execute(
+                f"SELECT status FROM {QUERY_JOBS_TABLE_NAME} WHERE id = %s",
+                (int(job_id),),
+            )
+            row = db_cursor.fetchone()
+            if row is None:
+                return True  # Job doesn't exist, treat as cancelled
+            return row["status"] in (
+                QueryJobStatus.CANCELLING,
+                QueryJobStatus.CANCELLED,
+                QueryJobStatus.KILLED,
+            )
+    except Exception:
+        return False  # On error, don't block the task
 
 
 def _make_core_clp_command_and_env_vars(
@@ -261,6 +288,15 @@ def search(
             task_id=task_id,
             start_time=start_time,
         )
+
+    # Check if the job was cancelled before starting the expensive subprocess
+    if _is_job_cancelled(sql_adapter, job_id):
+        logger.info(f"Job {job_id} is cancelled/killed, skipping {task_name} task {task_id}")
+        return QueryTaskResult(
+            task_id=task_id,
+            status=QueryTaskStatus.CANCELLED,
+            duration=0,
+        ).model_dump()
 
     task_results, _ = run_query_task(
         sql_adapter=sql_adapter,

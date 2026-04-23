@@ -388,15 +388,17 @@ async def handle_cancelling_search_jobs(db_conn_pool) -> None:
 
         for cancelling_job in cancelling_jobs:
             job_id = str(cancelling_job["job_id"])
+            job = None
             if job_id in active_jobs:
                 job = active_jobs.pop(job_id)
                 cancel_job_except_reducer(job)
                 # Perform any async tasks last so that it's easier to reason about synchronization
                 # issues between concurrent tasks
                 await release_reducer_for_job(job)
-            else:
-                continue
 
+            # Always update task and job statuses in the DB, even if the job is not in
+            # active_jobs (e.g., after a scheduler restart). This ensures CANCELLING jobs
+            # don't get stuck permanently.
             set_job_or_task_status(
                 db_conn,
                 QUERY_TASKS_TABLE_NAME,
@@ -416,7 +418,7 @@ async def handle_cancelling_search_jobs(db_conn_pool) -> None:
             )
 
             set_job_or_task_status_kwargs = {}
-            if job.start_time is not None:
+            if job is not None and job.start_time is not None:
                 set_job_or_task_status_kwargs["duration"] = (
                     datetime.datetime.now() - job.start_time
                 ).total_seconds()

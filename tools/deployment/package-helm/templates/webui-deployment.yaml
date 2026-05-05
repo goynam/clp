@@ -55,6 +55,9 @@ spec:
               value: "4000"
             - name: "RATE_LIMIT"
               value: {{ .Values.clpConfig.webui.rate_limit | quote }}
+            - name: "SEARCH_MAX_NUM_RESULTS"
+              # yamllint disable-line rule:braces
+              value: {{ .Values.clpConfig.webui.max_num_results | default 1000 | quote }}
             {{- with .Values.clpConfig.stream_output.storage }}
             {{- if and (eq .type "s3") (eq .s3_config.aws_authentication.type "credentials") }}
             - name: "AWS_ACCESS_KEY_ID"

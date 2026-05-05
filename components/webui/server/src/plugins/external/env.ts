@@ -13,6 +13,7 @@ declare module "fastify" {
             PRESTO_CATALOG: string;
             PRESTO_SCHEMA: string;
             RATE_LIMIT: number;
+            SEARCH_MAX_NUM_RESULTS: number;
         };
     }
 }
@@ -68,6 +69,13 @@ const schema = {
 
         // Security
         RATE_LIMIT: {
+            type: "number",
+            default: 1_000,
+            minimum: 1,
+        },
+
+        // Search
+        SEARCH_MAX_NUM_RESULTS: {
             type: "number",
             default: 1_000,
             minimum: 1,

@@ -16,7 +16,7 @@ import {
 import {constants} from "http2";
 
 import settings from "../../../../settings.json" with {type: "json"};
-import {SEARCH_MAX_NUM_RESULTS} from "./typings.js";
+import {SEARCH_MAX_NUM_RESULTS, setSearchMaxNumResults} from "./typings.js";
 import {
     createMongoIndexes,
     updateSearchSignalWhenJobsFinish,
@@ -39,6 +39,8 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
     if ("undefined" === typeof mongoDb) {
         throw new Error("MongoDB database not found");
     }
+
+    setSearchMaxNumResults(fastify.config.SEARCH_MAX_NUM_RESULTS);
 
     const searchResultsMetadataCollection = mongoDb.collection<SearchResultsMetadataDocument>(
         settings.MongoDbSearchResultsMetadataCollectionName

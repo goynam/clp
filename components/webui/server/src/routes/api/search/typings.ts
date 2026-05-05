@@ -11,8 +11,17 @@ import type {
 
 /**
  * The maximum number of results to retrieve for a search.
+ * Configured via the SEARCH_MAX_NUM_RESULTS environment variable (default: 1000).
  */
-const SEARCH_MAX_NUM_RESULTS = 1000;
+let SEARCH_MAX_NUM_RESULTS = 1000;
+
+/**
+ * Sets the max number of search results from the fastify config.
+ * @param maxResults
+ */
+const setSearchMaxNumResults = (maxResults: number) => {
+    SEARCH_MAX_NUM_RESULTS = maxResults;
+};
 
 type UpdateSearchSignalWhenJobsFinishProps = {
     aggregationJobId: number;
@@ -34,5 +43,6 @@ export {
     CreateMongoIndexesProps,
     SEARCH_MAX_NUM_RESULTS,
     SearchResultsMetadataDocument,
+    setSearchMaxNumResults,
     UpdateSearchSignalWhenJobsFinishProps,
 };
